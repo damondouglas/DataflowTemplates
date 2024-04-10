@@ -15,8 +15,16 @@
  */
 package com.google.cloud.teleport.plugin.model;
 
+import static com.google.common.base.Preconditions.checkState;
+import static org.apache.beam.sdk.util.Preconditions.checkStateNotNull;
+
+import com.google.cloud.teleport.metadata.Template;
+import com.google.common.collect.ImmutableSet;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /** Image Spec Model. The main payload to communicate parameters to the Dataflow UI. */
 public class ImageSpec {
@@ -89,5 +97,45 @@ public class ImageSpec {
     for (ImageSpecParameter parameter : metadata.getParameters()) {
       parameter.validate();
     }
+  }
+
+  public ImageSpec withMappedExperiments() {
+    mapStreamingModeExperiments();
+    return this;
+  }
+
+  private void mapStreamingModeExperiments() {
+    if (metadata.getDefaultStreamingMode().equals(Template.StreamingMode.UNSPECIFIED.name())) {
+      return;
+    }
+    String streamingMode = metadata.getDefaultStreamingMode();
+    ;
+    Set<Experiments.Experiment> allowed = allowedStreamingModeExperiments();
+    checkState(
+        allowed.stream().noneMatch(exp -> exp.getValue().equals(streamingMode)),
+        String.format(
+            "defaultStreamingMode: %s mismatch with supported availability: %s",
+            streamingMode,
+            allowed.stream()
+                .map(Experiments.Experiment::getValue)
+                .collect(Collectors.joining(", "))));
+
+    Experiments.Experiment streamingModeExperiment =
+        checkStateNotNull(Experiments.STREAMING_MODE_EXPERIMENT_MAP.get(streamingMode));
+    Experiments.builder()
+        .setExperiments(ImmutableSet.of(streamingModeExperiment))
+        .build()
+        .apply(this);
+  }
+
+  private Set<Experiments.Experiment> allowedStreamingModeExperiments() {
+    Set<Experiments.Experiment> result = new HashSet<>();
+    if (getMetadata().isSupportsAtLeastOnce()) {
+      result.add(Experiments.STREAM_MODE_AT_LEAST_ONCE);
+    }
+    if (getMetadata().isSupportsExactlyOnce()) {
+      result.add(Experiments.STREAM_MODE_EXACTLY_ONCE);
+    }
+    return result;
   }
 }

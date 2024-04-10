@@ -91,7 +91,7 @@ public @interface Template {
   boolean streaming() default false;
 
   /** Indicates if the template supports at-least-once correctness. */
-  boolean supportsAtLeastOnce() default false;
+  boolean supportsAtLeastOnce() default true;
 
   /** Indicates if the template supports exactly-once correctness. */
   boolean supportsExactlyOnce() default true;
@@ -113,7 +113,7 @@ public @interface Template {
   /** Marker if the template is still in preview / pre-GA. */
   boolean preview() default false;
 
-  StreamingMode defaultStreamingMode() default StreamingMode.UNSPECIFIED;
+  StreamingMode defaultStreamingMode() default StreamingMode.AT_LEAST_ONCE;
 
   enum StreamingMode {
     UNSPECIFIED,

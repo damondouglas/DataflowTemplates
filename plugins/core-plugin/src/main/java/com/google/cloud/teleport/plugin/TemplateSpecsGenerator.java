@@ -92,6 +92,7 @@ public class TemplateSpecsGenerator {
     m.setSupportsExactlyOnce(imageSpec.getMetadata().isSupportsExactlyOnce());
     m.setDefaultStreamingMode(imageSpec.getMetadata().getDefaultStreamingMode());
     is.setMetadata(m);
+    is = is.withMappedExperiments();
 
     try (FileWriter writer = new FileWriter(file)) {
       writer.write(gson.toJson(is));
