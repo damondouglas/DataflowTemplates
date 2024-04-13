@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.plugin.model;
 
+import static com.google.cloud.teleport.metadata.util.EnumBasedExperimentValueProvider.STREAMING_MODE_ENUM_BASED_EXPERIMENT_VALUE_PROVIDER;
 import static com.google.cloud.teleport.metadata.util.MetadataUtils.getParameterNameFromMethod;
 
 import com.google.cloud.teleport.metadata.Template;
@@ -61,6 +62,10 @@ public class TemplateDefinitions {
    * require the usage of @TemplateParameter.
    */
   private static final Set<String> IGNORED_DECLARING_CLASSES = Set.of("Object");
+
+  private static final String ADDITIONAL_EXPERIMENTS = "additionalExperiments";
+  private static final String STREAMING_MODE_EXPERIMENTS_MATCHER =
+      "^" + STREAMING_MODE_ENUM_BASED_EXPERIMENT_VALUE_PROVIDER.getPrefix() + ".*$";
 
   private Class<?> templateClass;
   private Template templateAnnotation;
@@ -316,6 +321,28 @@ public class TemplateDefinitions {
                 parameter ->
                     parameter.getName().contains("javascriptTextTransformGcsPath")
                         || parameter.getName().contains("javascriptTextTransformFunctionName")));
+
+    return withStreamingModeExperiments(imageSpec);
+  }
+
+  private ImageSpec withStreamingModeExperiments(ImageSpec imageSpec) {
+    if (templateAnnotation.defaultStreamingMode().equals(Template.StreamingMode.UNSPECIFIED)) {
+      return imageSpec;
+    }
+    if (imageSpec.getDefaultEnvironment() == null) {
+      imageSpec.setDefaultEnvironment(new HashMap<>());
+    }
+    Map<String, Object> environment = imageSpec.getDefaultEnvironment();
+    if (!environment.containsKey(ADDITIONAL_EXPERIMENTS)) {
+      environment.put(ADDITIONAL_EXPERIMENTS, new ArrayList<String>());
+    }
+
+    @SuppressWarnings("unchecked")
+    List<String> experiments = (List<String>) environment.get(ADDITIONAL_EXPERIMENTS);
+    experiments.removeIf(exp -> exp.matches(STREAMING_MODE_EXPERIMENTS_MATCHER));
+    experiments.add(
+        STREAMING_MODE_ENUM_BASED_EXPERIMENT_VALUE_PROVIDER.convert(
+            templateAnnotation.defaultStreamingMode()));
 
     return imageSpec;
   }
